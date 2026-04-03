@@ -887,21 +887,29 @@ func ClaudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		Usage:        &dto.Usage{},
 	}
 	var err *types.NewAPIError
+	detailEnabled := logger.IsDetailLogEnabled()
 	var streamItems []string
 	helper.StreamScannerHandler(c, resp, info, func(data string, sr *helper.StreamResult) {
 		err = HandleStreamResponseData(c, info, claudeInfo, data)
 		if err != nil {
 			sr.Stop(err)
 		}
-		streamItems = append(streamItems, data)
+		if detailEnabled {
+			streamItems = append(streamItems, data)
+		}
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Store stream items for detail logging
-	if len(streamItems) > 0 {
-		c.Set("detail_upstream_response", strings.Join(streamItems, "\n"))
+	// Store stream items for detail logging (only when enabled)
+	if len(streamItems) > 0 && logger.IsDetailLogEnabled() {
+		joined := strings.Join(streamItems, "\n")
+		const maxDetailSize = 4 << 20 // 4MB cap for detail logging
+		if len(joined) > maxDetailSize {
+			joined = joined[:maxDetailSize]
+		}
+		c.Set("detail_upstream_response", joined)
 	}
 
 	HandleStreamFinalResponse(c, info, claudeInfo)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -91,6 +92,9 @@ func CompressJSON(data string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// maxDecompressSize limits decompressed output to 64MB to prevent zip bombs
+const maxDecompressSize = 64 << 20
+
 // DecompressJSON decompresses gzipped JSON data
 func DecompressJSON(data []byte) (string, error) {
 	if len(data) == 0 {
@@ -104,7 +108,7 @@ func DecompressJSON(data []byte) (string, error) {
 	defer reader.Close()
 
 	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(reader); err != nil {
+	if _, err := io.Copy(&buf, io.LimitReader(reader, maxDecompressSize)); err != nil {
 		return "", err
 	}
 

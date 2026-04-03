@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +31,7 @@ type upstreamPricingResponse struct {
 func fetchUpstreamPricing(baseURL string) ([]upstreamPricingModel, error) {
 	url := strings.TrimRight(baseURL, "/") + "/api/pricing"
 
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := service.GetHttpClient()
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch pricing from %s: %w", url, err)

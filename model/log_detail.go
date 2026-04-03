@@ -17,10 +17,10 @@ type LogDetail struct {
 	UserId           int    `json:"user_id" gorm:"index"`
 	CreatedAt        int64  `json:"created_at" gorm:"bigint;index"`
 	// Store compressed data in DB only if DB_DETAIL_STORAGE=true
-	RequestBodyGz    []byte `json:"-" gorm:"type:bytea"`
-	ResponseBodyGz   []byte `json:"-" gorm:"type:bytea"`
-	UpstreamReqGz    []byte `json:"-" gorm:"type:bytea"`
-	UpstreamRespGz   []byte `json:"-" gorm:"type:bytea"`
+	RequestBodyGz    []byte `json:"-" gorm:"column:request_body_gz"`
+	ResponseBodyGz   []byte `json:"-" gorm:"column:response_body_gz"`
+	UpstreamReqGz    []byte `json:"-" gorm:"column:upstream_req_gz"`
+	UpstreamRespGz   []byte `json:"-" gorm:"column:upstream_resp_gz"`
 	// For JSON response, decompress on-the-fly
 	RequestBody      string `json:"request_body" gorm:"-"`
 	ResponseBody     string `json:"response_body" gorm:"-"`
@@ -46,6 +46,8 @@ var dbDetailStorageEnabled = os.Getenv("DB_DETAIL_STORAGE") == "true"
 // RecordLogDetail records full request/response details asynchronously
 // Writes to log file (always) and optionally to DB (if DB_DETAIL_STORAGE=true)
 func RecordLogDetail(c *gin.Context, params RecordLogDetailParams) {
+	// Copy context before async goroutine - gin.Context is recycled after request ends
+	ctx := c.Copy()
 	// Use gopool for async write to avoid blocking main request flow
 	gopool.Go(func() {
 		// Always write to log file (fast, for archival)
@@ -57,7 +59,7 @@ func RecordLogDetail(c *gin.Context, params RecordLogDetailParams) {
 			params.UpstreamRequest,
 			params.UpstreamResponse,
 		); err != nil {
-			logger.LogError(c, "failed to write detail log file: "+err.Error())
+			logger.LogError(ctx, "failed to write detail log file: "+err.Error())
 		}
 
 		// Optionally write to DB (for dashboard query)
@@ -80,7 +82,7 @@ func RecordLogDetail(c *gin.Context, params RecordLogDetailParams) {
 
 			err := LOG_DB.Create(logDetail).Error
 			if err != nil {
-				logger.LogError(c, "failed to record log detail to DB: "+err.Error())
+				logger.LogError(ctx, "failed to record log detail to DB: "+err.Error())
 			}
 		}
 	})

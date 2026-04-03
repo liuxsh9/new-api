@@ -187,9 +187,14 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 
 	applyUsagePostProcessing(info, usage, common.StringToByteSlice(lastStreamData))
 
-	// Store all stream items in context for detail logging
-	if len(streamItems) > 0 {
-		c.Set("detail_upstream_response", strings.Join(streamItems, "\n"))
+	// Store all stream items in context for detail logging (only when enabled)
+	if len(streamItems) > 0 && logger.IsDetailLogEnabled() {
+		joined := strings.Join(streamItems, "\n")
+		const maxDetailSize = 4 << 20 // 4MB cap for detail logging
+		if len(joined) > maxDetailSize {
+			joined = joined[:maxDetailSize]
+		}
+		c.Set("detail_upstream_response", joined)
 	}
 
 	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
