@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import {
   Avatar,
+  Button,
   Space,
   Tag,
   Tooltip,
@@ -967,17 +968,18 @@ export const getLogsColumns = ({
           return '-';
         }
         return (
-          <Button
-            size="small"
-            theme="borderless"
+          <Tag
+            color='blue'
+            shape='circle'
+            style={{ cursor: 'pointer' }}
             onClick={() => {
               if (window.showLogDetail) {
                 window.showLogDetail(record.request_id);
               }
             }}
           >
-            {t('请求与响应')}
-          </Button>
+            {t('查看')}
+          </Tag>
         );
       },
     },
