@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,9 +17,10 @@ import (
 )
 
 var (
-	httpClient      *http.Client
-	proxyClientLock sync.Mutex
-	proxyClients    = make(map[string]*http.Client)
+	httpClient       *http.Client
+	streamHttpClient *http.Client
+	proxyClientLock  sync.Mutex
+	proxyClients     = make(map[string]*http.Client)
 )
 
 func checkRedirect(req *http.Request, via []*http.Request) error {
@@ -34,19 +36,47 @@ func checkRedirect(req *http.Request, via []*http.Request) error {
 }
 
 func InitHttpClient() {
+	baseDialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	// Transport for non-streaming requests: has ResponseHeaderTimeout to prevent hung connections
 	transport := &http.Transport{
+		DialContext:           baseDialer.DialContext,
+		MaxIdleConns:          common.RelayMaxIdleConns,
+		MaxIdleConnsPerHost:   common.RelayMaxIdleConnsPerHost,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 300 * time.Second,
+		ForceAttemptHTTP2:     false,
+		TLSNextProto:          make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		Proxy:                 http.ProxyFromEnvironment,
+	}
+
+	// Transport for streaming requests: no ResponseHeaderTimeout (thinking models may take minutes for first token)
+	streamTransport := &http.Transport{
+		DialContext:         baseDialer.DialContext,
 		MaxIdleConns:        common.RelayMaxIdleConns,
 		MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-		ForceAttemptHTTP2:   true,
-		Proxy:               http.ProxyFromEnvironment, // Support HTTP_PROXY, HTTPS_PROXY, NO_PROXY env vars
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		ForceAttemptHTTP2:   false,
+		TLSNextProto:        make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		Proxy:               http.ProxyFromEnvironment,
 	}
+
 	if common.TLSInsecureSkipVerify {
 		transport.TLSClientConfig = common.InsecureTLSConfig
+		streamTransport.TLSClientConfig = common.InsecureTLSConfig
 	}
 
 	if common.RelayTimeout == 0 {
 		httpClient = &http.Client{
 			Transport:     transport,
+			CheckRedirect: checkRedirect,
+		}
+		streamHttpClient = &http.Client{
+			Transport:     streamTransport,
 			CheckRedirect: checkRedirect,
 		}
 	} else {
@@ -55,11 +85,20 @@ func InitHttpClient() {
 			Timeout:       time.Duration(common.RelayTimeout) * time.Second,
 			CheckRedirect: checkRedirect,
 		}
+		streamHttpClient = &http.Client{
+			Transport:     streamTransport,
+			Timeout:       time.Duration(common.RelayTimeout) * time.Second,
+			CheckRedirect: checkRedirect,
+		}
 	}
 }
 
 func GetHttpClient() *http.Client {
 	return httpClient
+}
+
+func GetStreamHttpClient() *http.Client {
+	return streamHttpClient
 }
 
 // GetHttpClientWithProxy returns the default client or a proxy-enabled one when proxyURL is provided.
@@ -106,10 +145,18 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 	switch parsedURL.Scheme {
 	case "http", "https":
 		transport := &http.Transport{
-			MaxIdleConns:        common.RelayMaxIdleConns,
-			MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-			ForceAttemptHTTP2:   true,
-			Proxy:               http.ProxyURL(parsedURL),
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          common.RelayMaxIdleConns,
+			MaxIdleConnsPerHost:   common.RelayMaxIdleConnsPerHost,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 120 * time.Second,
+			ForceAttemptHTTP2:     false,
+			TLSNextProto:          make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+			Proxy:                 http.ProxyURL(parsedURL),
 		}
 		if common.TLSInsecureSkipVerify {
 			transport.TLSClientConfig = common.InsecureTLSConfig
@@ -145,9 +192,13 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 		}
 
 		transport := &http.Transport{
-			MaxIdleConns:        common.RelayMaxIdleConns,
-			MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-			ForceAttemptHTTP2:   true,
+			MaxIdleConns:          common.RelayMaxIdleConns,
+			MaxIdleConnsPerHost:   common.RelayMaxIdleConnsPerHost,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 120 * time.Second,
+			ForceAttemptHTTP2:     false,
+			TLSNextProto:          make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return dialer.Dial(network, addr)
 			},

@@ -958,5 +958,28 @@ export const getLogsColumns = ({
         return renderCompactDetailSummary(detailSummary.segments);
       },
     },
+    {
+      key: 'detail',
+      title: t('请求与响应'),
+      dataIndex: 'request_id',
+      render: (text, record) => {
+        if (!record.request_id) {
+          return '-';
+        }
+        return (
+          <Button
+            size="small"
+            theme="borderless"
+            onClick={() => {
+              if (window.showLogDetail) {
+                window.showLogDetail(record.request_id);
+              }
+            }}
+          >
+            {t('请求与响应')}
+          </Button>
+        );
+      },
+    },
   ];
 };

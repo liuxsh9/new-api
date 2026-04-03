@@ -887,14 +887,21 @@ func ClaudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		Usage:        &dto.Usage{},
 	}
 	var err *types.NewAPIError
+	var streamItems []string
 	helper.StreamScannerHandler(c, resp, info, func(data string, sr *helper.StreamResult) {
 		err = HandleStreamResponseData(c, info, claudeInfo, data)
 		if err != nil {
 			sr.Stop(err)
 		}
+		streamItems = append(streamItems, data)
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Store stream items for detail logging
+	if len(streamItems) > 0 {
+		c.Set("detail_upstream_response", strings.Join(streamItems, "\n"))
 	}
 
 	HandleStreamFinalResponse(c, info, claudeInfo)
@@ -962,6 +969,8 @@ func ClaudeHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayI
 	if common.DebugEnabled {
 		println("responseBody: ", string(responseBody))
 	}
+	// Store response body for detail logging
+	c.Set("detail_upstream_response", string(responseBody))
 	handleErr := HandleClaudeResponseData(c, info, claudeInfo, resp, responseBody)
 	if handleErr != nil {
 		return nil, handleErr

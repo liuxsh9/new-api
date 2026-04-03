@@ -3376,6 +3376,10 @@
     "从剪贴板粘贴配置": "Paste Config",
     "剪贴板中未检测到连接信息": "No connection info found in clipboard",
     "连接信息已填入": "Connection info applied",
-    "无法读取剪贴板": "Cannot read clipboard"
+    "无法读取剪贴板": "Cannot read clipboard",
+    "导出用户额度": "Export User Quota",
+    "全部月份": "All Months",
+    "请先选择一个月份再导出": "Please select a month before exporting",
+    "选择月份后可导出该月数据": "Select a month to export its data"
   }
 }

@@ -26,6 +26,15 @@ import (
 func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
 	info.InitChannelMeta(c)
 
+	// Capture client request body for detail logging
+	var clientRequestBody string
+	var getClientResponse func() string
+	if logger.IsDetailLogEnabled() {
+		clientRequestBody = captureRequestBody(c)
+		c.Set("detail_client_request", clientRequestBody)
+		getClientResponse = installResponseCapture(c)
+	}
+
 	textReq, ok := info.Request.(*dto.GeneralOpenAIRequest)
 	if !ok {
 		return types.NewErrorWithStatusCode(fmt.Errorf("invalid request type, expected dto.GeneralOpenAIRequest, got %T", info.Request), types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
@@ -179,6 +188,13 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		requestBody = bytes.NewBuffer(jsonData)
 	}
 
+	// Capture upstream request for detail logging
+	var upstreamRequestBody string
+	if logger.IsDetailLogEnabled() {
+		requestBody, upstreamRequestBody = captureUpstreamRequest(requestBody)
+		c.Set("detail_upstream_request", upstreamRequestBody)
+	}
+
 	var httpResp *http.Response
 	resp, err := adaptor.DoRequest(c, info, requestBody)
 	if err != nil {
@@ -205,6 +221,11 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		return newApiErr
 	}
 
+	// Capture client response after DoResponse completes
+	if logger.IsDetailLogEnabled() && getClientResponse != nil {
+		c.Set("detail_client_response", getClientResponse())
+	}
+
 	var containAudioTokens = usage.(*dto.Usage).CompletionTokenDetails.AudioTokens > 0 || usage.(*dto.Usage).PromptTokensDetails.AudioTokens > 0
 	var containsAudioRatios = ratio_setting.ContainsAudioRatio(info.OriginModelName) || ratio_setting.ContainsAudioCompletionRatio(info.OriginModelName)
 
@@ -213,5 +234,16 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 	} else {
 		service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), nil)
 	}
+
+	// Record detailed request/response log if enabled
+	if logger.IsDetailLogEnabled() {
+		clientReq := c.GetString("detail_client_request")
+		upstreamReq := c.GetString("detail_upstream_request")
+		clientResp := c.GetString("detail_client_response")
+		upstreamResp := c.GetString("detail_upstream_response")
+
+		recordDetailLog(c, info, clientReq, clientResp, upstreamReq, upstreamResp)
+	}
+
 	return nil
 }

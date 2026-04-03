@@ -245,6 +245,7 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/upstream_updates/apply_all", controller.ApplyAllChannelUpstreamModelUpdates)
 			channelRoute.POST("/upstream_updates/detect", controller.DetectChannelUpstreamModelUpdates)
 			channelRoute.POST("/upstream_updates/detect_all", controller.DetectAllChannelUpstreamModelUpdates)
+			channelRoute.POST("/upstream_updates/sync_pricing", controller.SyncChannelUpstreamPricing)
 		}
 		tokenRoute := apiRouter.Group("/token")
 		tokenRoute.Use(middleware.UserAuth())
@@ -284,11 +285,15 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)
 		logRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteHistoryLogs)
 		logRoute.GET("/stat", middleware.AdminAuth(), controller.GetLogsStat)
+		logRoute.GET("/monthly_stat", middleware.AdminAuth(), controller.GetMonthlyStats)
+		logRoute.GET("/monthly_stat/channel", middleware.AdminAuth(), controller.GetMonthlyStatsByChannel)
+		logRoute.GET("/export/user_quota", middleware.AdminAuth(), controller.ExportUserQuotaUsage)
 		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
 		logRoute.GET("/channel_affinity_usage_cache", middleware.AdminAuth(), controller.GetChannelAffinityUsageCacheStats)
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
 		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
 		logRoute.GET("/self/search", middleware.UserAuth(), middleware.SearchRateLimit(), controller.SearchUserLogs)
+		logRoute.GET("/detail/:request_id", middleware.UserAuth(), controller.GetLogDetail)
 
 		dataRoute := apiRouter.Group("/data")
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)

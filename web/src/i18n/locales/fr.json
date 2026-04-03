@@ -3332,6 +3332,10 @@
     "从剪贴板粘贴配置": "Coller la config",
     "剪贴板中未检测到连接信息": "Aucune info de connexion trouvée dans le presse-papiers",
     "连接信息已填入": "Informations de connexion appliquées",
-    "无法读取剪贴板": "Impossible de lire le presse-papiers"
+    "无法读取剪贴板": "Impossible de lire le presse-papiers",
+    "导出用户额度": "Exporter le quota utilisateur",
+    "全部月份": "Tous les mois",
+    "请先选择一个月份再导出": "Veuillez sélectionner un mois avant d'exporter",
+    "选择月份后可导出该月数据": "Sélectionnez un mois pour exporter ses données"
   }
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -457,6 +458,141 @@ func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	return token
 }
 
+type MonthlyStat struct {
+	Month            string `json:"month" gorm:"column:month"`
+	RequestCount     int64  `json:"request_count" gorm:"column:request_count"`
+	PromptTokens     int64  `json:"prompt_tokens" gorm:"column:prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens" gorm:"column:completion_tokens"`
+	Quota            int64  `json:"quota" gorm:"column:quota"`
+}
+
+type MonthlyStatByChannel struct {
+	Month            string `json:"month" gorm:"column:month"`
+	ChannelId        int    `json:"channel_id" gorm:"column:channel_id"`
+	ChannelName      string `json:"channel_name" gorm:"column:channel_name"`
+	RequestCount     int64  `json:"request_count" gorm:"column:request_count"`
+	PromptTokens     int64  `json:"prompt_tokens" gorm:"column:prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens" gorm:"column:completion_tokens"`
+	Quota            int64  `json:"quota" gorm:"column:quota"`
+}
+
+// getLogMonthExpr returns the SQL expression to extract YYYY-MM from created_at (unix timestamp)
+// based on the actual log database type.
+func getLogMonthExpr() string {
+	if os.Getenv("LOG_SQL_DSN") != "" {
+		// Dedicated log DB — use LogSqlType
+		switch common.LogSqlType {
+		case common.DatabaseTypePostgreSQL:
+			return "to_char(to_timestamp(created_at), 'YYYY-MM')"
+		case common.DatabaseTypeMySQL:
+			return "DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m')"
+		default:
+			return "strftime('%Y-%m', created_at, 'unixepoch')"
+		}
+	}
+	// LOG_DB == DB — use main DB flags
+	if common.UsingPostgreSQL {
+		return "to_char(to_timestamp(created_at), 'YYYY-MM')"
+	}
+	if common.UsingMySQL {
+		return "DATE_FORMAT(FROM_UNIXTIME(created_at), '%Y-%m')"
+	}
+	return "strftime('%Y-%m', created_at, 'unixepoch')"
+}
+
+func GetMonthlyStats(startTimestamp, endTimestamp int64) ([]MonthlyStat, error) {
+	monthExpr := getLogMonthExpr()
+	var stats []MonthlyStat
+	err := LOG_DB.Table("logs").
+		Select(fmt.Sprintf("%s AS month, COUNT(*) AS request_count, COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens, COALESCE(SUM(completion_tokens), 0) AS completion_tokens, COALESCE(SUM(quota), 0) AS quota", monthExpr)).
+		Where("type = ? AND created_at >= ? AND created_at <= ?", LogTypeConsume, startTimestamp, endTimestamp).
+		Group(monthExpr).
+		Order("month ASC").
+		Find(&stats).Error
+	if err != nil {
+		return nil, errors.New("查询月度统计数据失败")
+	}
+	return stats, nil
+}
+
+func GetMonthlyStatsByChannel(startTimestamp, endTimestamp int64) ([]MonthlyStatByChannel, error) {
+	monthExpr := getLogMonthExpr()
+	var stats []MonthlyStatByChannel
+
+	// When LOG_DB != DB (dedicated log database), we can't JOIN across databases.
+	// Instead, query logs grouped by month+channel_id, then resolve names from main DB.
+	if os.Getenv("LOG_SQL_DSN") != "" {
+		type monthChannelRow struct {
+			Month            string `gorm:"column:month"`
+			ChannelId        int    `gorm:"column:channel_id"`
+			RequestCount     int64  `gorm:"column:request_count"`
+			PromptTokens     int64  `gorm:"column:prompt_tokens"`
+			CompletionTokens int64  `gorm:"column:completion_tokens"`
+			Quota            int64  `gorm:"column:quota"`
+		}
+		var rows []monthChannelRow
+		selectFields := fmt.Sprintf("%s AS month, channel_id, COUNT(*) AS request_count, COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens, COALESCE(SUM(completion_tokens), 0) AS completion_tokens, COALESCE(SUM(quota), 0) AS quota", monthExpr)
+		groupBy := fmt.Sprintf("%s, channel_id", monthExpr)
+		err := LOG_DB.Table("logs").
+			Select(selectFields).
+			Where("type = ? AND created_at >= ? AND created_at <= ?", LogTypeConsume, startTimestamp, endTimestamp).
+			Group(groupBy).
+			Order("month ASC, quota DESC").
+			Find(&rows).Error
+		if err != nil {
+			return nil, errors.New("查询月度渠道统计数据失败")
+		}
+
+		// Collect unique channel IDs and batch-fetch names from main DB
+		channelIdSet := make(map[int]struct{})
+		for _, r := range rows {
+			channelIdSet[r.ChannelId] = struct{}{}
+		}
+		channelNames := make(map[int]string)
+		if len(channelIdSet) > 0 {
+			var channels []Channel
+			ids := make([]int, 0, len(channelIdSet))
+			for id := range channelIdSet {
+				ids = append(ids, id)
+			}
+			DB.Select("id, name").Where("id IN ?", ids).Find(&channels)
+			for _, ch := range channels {
+				channelNames[ch.Id] = ch.Name
+			}
+		}
+
+		stats = make([]MonthlyStatByChannel, 0, len(rows))
+		for _, r := range rows {
+			stats = append(stats, MonthlyStatByChannel{
+				Month:            r.Month,
+				ChannelId:        r.ChannelId,
+				ChannelName:      channelNames[r.ChannelId],
+				RequestCount:     r.RequestCount,
+				PromptTokens:     r.PromptTokens,
+				CompletionTokens: r.CompletionTokens,
+				Quota:            r.Quota,
+			})
+		}
+		return stats, nil
+	}
+
+	// Same database: use JOIN
+	selectFields := fmt.Sprintf("%s AS month, logs.channel_id, COALESCE(c.name, '') AS channel_name, COUNT(*) AS request_count, COALESCE(SUM(logs.prompt_tokens), 0) AS prompt_tokens, COALESCE(SUM(logs.completion_tokens), 0) AS completion_tokens, COALESCE(SUM(logs.quota), 0) AS quota", monthExpr)
+	groupBy := fmt.Sprintf("%s, logs.channel_id, c.name", monthExpr)
+
+	err := LOG_DB.Table("logs").
+		Select(selectFields).
+		Joins("LEFT JOIN channels c ON logs.channel_id = c.id").
+		Where("logs.type = ? AND logs.created_at >= ? AND logs.created_at <= ?", LogTypeConsume, startTimestamp, endTimestamp).
+		Group(groupBy).
+		Order("month ASC, quota DESC").
+		Find(&stats).Error
+	if err != nil {
+		return nil, errors.New("查询月度渠道统计数据失败")
+	}
+	return stats, nil
+}
+
 func DeleteOldLog(ctx context.Context, targetTimestamp int64, limit int) (int64, error) {
 	var total int64 = 0
 
@@ -478,4 +614,57 @@ func DeleteOldLog(ctx context.Context, targetTimestamp int64, limit int) (int64,
 	}
 
 	return total, nil
+}
+
+type UserQuotaUsageStat struct {
+	UserId           int    `json:"user_id"`
+	Username         string `json:"username"`
+	DisplayName      string `json:"display_name"`
+	Remark           string `json:"remark"`
+	RequestCount     int64  `json:"request_count"`
+	PromptTokens     int64  `json:"prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens"`
+	Quota            int64  `json:"quota"`
+}
+
+func GetUserQuotaUsageStats(startTimestamp, endTimestamp int64) ([]UserQuotaUsageStat, error) {
+	var stats []UserQuotaUsageStat
+	err := LOG_DB.Table("logs").
+		Select("user_id, username, COUNT(*) AS request_count, COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens, COALESCE(SUM(completion_tokens), 0) AS completion_tokens, COALESCE(SUM(quota), 0) AS quota").
+		Where("type = ? AND created_at >= ? AND created_at <= ?", LogTypeConsume, startTimestamp, endTimestamp).
+		Group("user_id, username").
+		Order("quota DESC").
+		Find(&stats).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Enrich with display_name and remark from users table
+	if len(stats) > 0 {
+		userIds := make([]int, len(stats))
+		for i, s := range stats {
+			userIds[i] = s.UserId
+		}
+		type userInfo struct {
+			Id          int    `gorm:"column:id"`
+			DisplayName string `gorm:"column:display_name"`
+			Remark      string `gorm:"column:remark"`
+		}
+		var users []userInfo
+		if err := DB.Table("users").Select("id, display_name, remark").Where("id IN ?", userIds).Find(&users).Error; err != nil {
+			return stats, nil // non-fatal, return stats without enrichment
+		}
+		userMap := make(map[int]userInfo, len(users))
+		for _, u := range users {
+			userMap[u.Id] = u
+		}
+		for i := range stats {
+			if u, ok := userMap[stats[i].UserId]; ok {
+				stats[i].DisplayName = u.DisplayName
+				stats[i].Remark = u.Remark
+			}
+		}
+	}
+
+	return stats, nil
 }

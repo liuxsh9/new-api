@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"bytes"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -148,6 +150,71 @@ func GetLogsSelfStat(c *gin.Context) {
 	return
 }
 
+func GetMonthlyStats(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+
+	now := time.Now()
+	if endTimestamp == 0 {
+		endTimestamp = now.Unix()
+	}
+	if startTimestamp == 0 {
+		startTimestamp = now.AddDate(-1, 0, 0).Unix()
+	}
+
+	// Limit to ~13 months (396 days) to comfortably cover any 12-month range
+	if endTimestamp-startTimestamp > 34214400 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "时间跨度不能超过12个月",
+		})
+		return
+	}
+
+	stats, err := model.GetMonthlyStats(startTimestamp, endTimestamp)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    stats,
+	})
+}
+
+func GetMonthlyStatsByChannel(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+
+	now := time.Now()
+	if endTimestamp == 0 {
+		endTimestamp = now.Unix()
+	}
+	if startTimestamp == 0 {
+		startTimestamp = now.AddDate(-1, 0, 0).Unix()
+	}
+
+	if endTimestamp-startTimestamp > 34214400 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "时间跨度不能超过12个月",
+		})
+		return
+	}
+
+	stats, err := model.GetMonthlyStatsByChannel(startTimestamp, endTimestamp)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    stats,
+	})
+}
+
 func DeleteHistoryLogs(c *gin.Context) {
 	targetTimestamp, _ := strconv.ParseInt(c.Query("target_timestamp"), 10, 64)
 	if targetTimestamp == 0 {
@@ -168,4 +235,79 @@ func DeleteHistoryLogs(c *gin.Context) {
 		"data":    count,
 	})
 	return
+}
+
+func GetLogDetail(c *gin.Context) {
+	requestId := c.Param("request_id")
+	if requestId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "request_id is required",
+		})
+		return
+	}
+
+	logDetail, err := model.GetLogDetailByRequestId(requestId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "log detail not found",
+		})
+		return
+	}
+
+	// Check permission: admin can see all, user can only see their own
+	userId := c.GetInt("id")
+	role := c.GetInt("role")
+	if role != common.RoleRootUser && role != common.RoleAdminUser && logDetail.UserId != userId {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "permission denied",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    logDetail,
+	})
+}
+
+func ExportUserQuotaUsage(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+
+	if startTimestamp <= 0 || endTimestamp <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "start_timestamp and end_timestamp are required",
+		})
+		return
+	}
+
+	if startTimestamp > endTimestamp {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "start_timestamp must be less than or equal to end_timestamp",
+		})
+		return
+	}
+
+	stats, err := model.GetUserQuotaUsageStats(startTimestamp, endTimestamp)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// Buffer CSV in memory so we don't send headers before knowing export succeeds
+	var buf bytes.Buffer
+	buf.Write([]byte("\xEF\xBB\xBF"))
+	if err := model.ExportUserQuotaToCSV(&buf, stats); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.Header("Content-Disposition", "attachment; filename=user_quota_usage.csv")
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
 }

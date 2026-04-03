@@ -368,6 +368,10 @@ func checkAndPersistChannelUpstreamModelUpdates(
 			channel.Models = strings.Join(mergedModels, ",")
 			autoAdded = len(mergedModels) - len(originModels)
 			modelsChanged = true
+
+			// Auto-sync pricing for auto-added models
+			actuallyAdded := subtractModelNames(mergedModels, originModels)
+			syncPricingOnModelAdd(channel, actuallyAdded)
 		}
 		settings.UpstreamModelUpdateLastDetectedModels = []string{}
 	} else {
@@ -697,6 +701,11 @@ func ApplyChannelUpstreamModelUpdates(c *gin.Context) {
 		refreshChannelRuntimeCache()
 	}
 
+	// Auto-sync pricing for newly added models
+	if len(addedModels) > 0 {
+		syncPricingOnModelAdd(channel, addedModels)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -873,6 +882,12 @@ func ApplyAllChannelUpstreamModelUpdates(c *gin.Context) {
 			}
 			addedModelCount += len(addedModels)
 			removedModelCount += len(removedModels)
+
+			// Auto-sync pricing for newly added models
+			if len(addedModels) > 0 {
+				syncPricingOnModelAdd(channel, addedModels)
+			}
+
 			results = append(results, applyAllChannelUpstreamModelUpdatesResult{
 				ChannelID:             channel.Id,
 				ChannelName:           channel.Name,

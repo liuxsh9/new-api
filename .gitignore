@@ -29,3 +29,18 @@ data/
 .gomodcache/
 .gocache-temp
 .gopath
+
+# Temporary scripts and docs
+COMPLETION_REPORT.md
+DELIVERY_CHECKLIST.md
+DEPLOYMENT_CHECKLIST.md
+DETAIL_LOG_FEATURE.md
+QUICK_START.md
+README_DETAIL_LOG.md
+START_HERE.txt
+SUMMARY.txt
+build-test.sh
+check-status.sh
+deploy.sh
+start-tomorrow.sh
+test-detail-log.sh

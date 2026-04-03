@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
@@ -24,6 +25,15 @@ import (
 func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
 
 	info.InitChannelMeta(c)
+
+	// Capture client request body for detail logging
+	var clientRequestBody string
+	var getClientResponse func() string
+	if logger.IsDetailLogEnabled() {
+		clientRequestBody = captureRequestBody(c)
+		c.Set("detail_client_request", clientRequestBody)
+		getClientResponse = installResponseCapture(c)
+	}
 
 	claudeReq, ok := info.Request.(*dto.ClaudeRequest)
 
@@ -164,6 +174,13 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		requestBody = bytes.NewBuffer(jsonData)
 	}
 
+	// Capture upstream request for detail logging
+	if logger.IsDetailLogEnabled() {
+		var upstreamRequestBody string
+		requestBody, upstreamRequestBody = captureUpstreamRequest(requestBody)
+		c.Set("detail_upstream_request", upstreamRequestBody)
+	}
+
 	statusCodeMappingStr := c.GetString("status_code_mapping")
 	var httpResp *http.Response
 	resp, err := adaptor.DoRequest(c, info, requestBody)
@@ -183,11 +200,21 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 	}
 
 	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
-	//log.Printf("usage: %v", usage)
 	if newAPIError != nil {
-		// reset status code 重置状态码
+		// reset status code
 		service.ResetStatusCode(newAPIError, statusCodeMappingStr)
 		return newAPIError
+	}
+
+	// Capture client response and record detail log
+	if logger.IsDetailLogEnabled() && getClientResponse != nil {
+		c.Set("detail_client_response", getClientResponse())
+
+		clientReq := c.GetString("detail_client_request")
+		clientResp := c.GetString("detail_client_response")
+		upstreamReq := c.GetString("detail_upstream_request")
+		upstreamResp := c.GetString("detail_upstream_response")
+		recordDetailLog(c, info, clientReq, clientResp, upstreamReq, upstreamResp)
 	}
 
 	service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), nil)

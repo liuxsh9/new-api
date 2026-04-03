@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -137,7 +138,9 @@ func GetClaudeAuthHeader(token string) http.Header {
 }
 
 func GetResponseBody(method, url string, channel *model.Channel, headers http.Header) ([]byte, error) {
-	req, err := http.NewRequest(method, url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}

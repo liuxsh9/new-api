@@ -3882,6 +3882,10 @@
     "从剪贴板粘贴配置": "Dán cấu hình",
     "剪贴板中未检测到连接信息": "Không tìm thấy thông tin kết nối trong bộ nhớ tạm",
     "连接信息已填入": "Đã áp dụng thông tin kết nối",
-    "无法读取剪贴板": "Không thể đọc bộ nhớ tạm"
+    "无法读取剪贴板": "Không thể đọc bộ nhớ tạm",
+    "导出用户额度": "Xuất hạn mức người dùng",
+    "全部月份": "Tất cả tháng",
+    "请先选择一个月份再导出": "Vui lòng chọn tháng trước khi xuất",
+    "选择月份后可导出该月数据": "Chọn tháng để xuất dữ liệu"
   }
 }

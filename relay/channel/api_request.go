@@ -491,8 +491,19 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 		if err != nil {
 			return nil, fmt.Errorf("new proxy http client failed: %w", err)
 		}
+	} else if info.IsStream {
+		client = service.GetStreamHttpClient()
 	} else {
 		client = service.GetHttpClient()
+	}
+
+	// Check channel limiter before sending request
+	if !service.ChannelLimiterInstance.Allow(info.ChannelId, info.UpstreamModelName) {
+		return nil, types.NewError(
+			fmt.Errorf("channel %d model %s is in cooldown due to upstream rate limiting", info.ChannelId, info.UpstreamModelName),
+			types.ErrorCodeDoRequestFailed,
+			types.ErrOptionWithHideErrMsg("upstream error: channel rate limited, please retry later"),
+		)
 	}
 
 	var stopPinger context.CancelFunc
@@ -522,6 +533,13 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 	}
 	if resp == nil {
 		return nil, errors.New("resp is nil")
+	}
+
+	// Record upstream 429 for channel limiter
+	if resp.StatusCode == http.StatusTooManyRequests {
+		service.ChannelLimiterInstance.Record429(info.ChannelId, info.UpstreamModelName)
+	} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		service.ChannelLimiterInstance.RecordSuccess(info.ChannelId, info.UpstreamModelName)
 	}
 
 	_ = req.Body.Close()
