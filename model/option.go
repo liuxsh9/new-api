@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -45,6 +46,8 @@ func InitOptionMap() {
 	common.OptionMap["TurnstileCheckEnabled"] = strconv.FormatBool(common.TurnstileCheckEnabled)
 	common.OptionMap["RegisterEnabled"] = strconv.FormatBool(common.RegisterEnabled)
 	common.OptionMap["InvitationCodeEnabled"] = strconv.FormatBool(common.InvitationCodeEnabled)
+	common.OptionMap["DetailLogEnabled"] = strconv.FormatBool(common.DetailLogEnabled)
+	common.OptionMap["DetailLogDBStorageEnabled"] = strconv.FormatBool(common.DetailLogDBStorageEnabled)
 	common.OptionMap["AutomaticDisableChannelEnabled"] = strconv.FormatBool(common.AutomaticDisableChannelEnabled)
 	common.OptionMap["AutomaticEnableChannelEnabled"] = strconv.FormatBool(common.AutomaticEnableChannelEnabled)
 	common.OptionMap["LogConsumeEnabled"] = strconv.FormatBool(common.LogConsumeEnabled)
@@ -257,6 +260,10 @@ func updateOptionMap(key string, value string) (err error) {
 			common.RegisterEnabled = boolValue
 		case "InvitationCodeEnabled":
 			common.InvitationCodeEnabled = boolValue
+		case "DetailLogEnabled":
+			logger.SetDetailLogEnabled(boolValue)
+		case "DetailLogDBStorageEnabled":
+			common.DetailLogDBStorageEnabled = boolValue
 		case "EmailDomainRestrictionEnabled":
 			common.EmailDomainRestrictionEnabled = boolValue
 		case "EmailAliasRestrictionEnabled":

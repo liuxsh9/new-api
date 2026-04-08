@@ -46,6 +46,8 @@ export default function SettingsLog(props) {
   const [loadingCleanHistoryLog, setLoadingCleanHistoryLog] = useState(false);
   const [inputs, setInputs] = useState({
     LogConsumeEnabled: false,
+    DetailLogEnabled: false,
+    DetailLogDBStorageEnabled: false,
     historyTimestamp: dayjs().subtract(1, 'month').toDate(),
   });
   const refForm = useRef();
@@ -212,6 +214,38 @@ export default function SettingsLog(props) {
                     setInputs({
                       ...inputs,
                       LogConsumeEnabled: value,
+                    });
+                  }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'DetailLogEnabled'}
+                  label={t('启用详细日志')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  extraText={t('记录完整的请求与响应内容')}
+                  onChange={(value) => {
+                    setInputs({
+                      ...inputs,
+                      DetailLogEnabled: value,
+                    });
+                  }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'DetailLogDBStorageEnabled'}
+                  label={t('详细日志写入数据库')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  extraText={t('开启后可在日志面板查看请求详情')}
+                  onChange={(value) => {
+                    setInputs({
+                      ...inputs,
+                      DetailLogDBStorageEnabled: value,
                     });
                   }}
                 />

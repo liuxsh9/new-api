@@ -1,8 +1,6 @@
 package model
 
 import (
-	"os"
-
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/bytedance/gopkg/util/gopool"
@@ -41,8 +39,6 @@ type RecordLogDetailParams struct {
 	UpstreamResponse string
 }
 
-var dbDetailStorageEnabled = os.Getenv("DB_DETAIL_STORAGE") == "true"
-
 // RecordLogDetail records full request/response details asynchronously
 // Writes to log file (always) and optionally to DB (if DB_DETAIL_STORAGE=true)
 func RecordLogDetail(c *gin.Context, params RecordLogDetailParams) {
@@ -63,7 +59,7 @@ func RecordLogDetail(c *gin.Context, params RecordLogDetailParams) {
 		}
 
 		// Optionally write to DB (for dashboard query)
-		if dbDetailStorageEnabled {
+		if common.DetailLogDBStorageEnabled {
 			// Compress data before storing in DB
 			reqGz, _ := logger.CompressJSON(params.RequestBody)
 			respGz, _ := logger.CompressJSON(params.ResponseBody)
@@ -115,7 +111,7 @@ func GetLogDetailByRequestId(requestId string) (*LogDetail, error) {
 
 // DeleteOldLogDetails deletes log details older than targetTimestamp
 func DeleteOldLogDetails(targetTimestamp int64, limit int) (int64, error) {
-	if !dbDetailStorageEnabled {
+	if !common.DetailLogDBStorageEnabled {
 		return 0, nil
 	}
 

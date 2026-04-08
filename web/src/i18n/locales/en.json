@@ -3395,6 +3395,10 @@
     "设置邀请码的基本信息": "Set basic information for invitation code",
     "删除邀请码": "Delete Invitation Code",
     "确定要删除该邀请码吗？此操作不可撤销。": "Are you sure you want to delete this invitation code? This action cannot be undone.",
-    "请至少选择一个邀请码！": "Please select at least one invitation code!"
+    "请至少选择一个邀请码！": "Please select at least one invitation code!",
+    "启用详细日志": "Enable Detail Log",
+    "记录完整的请求与响应内容": "Record full request and response content",
+    "详细日志写入数据库": "Write Detail Log to Database",
+    "开启后可在日志面板查看请求详情": "Enable to view request details in log panel"
   }
 }

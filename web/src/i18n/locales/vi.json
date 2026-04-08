@@ -3901,6 +3901,10 @@
     "设置邀请码的基本信息": "Thiết lập thông tin cơ bản",
     "删除邀请码": "Xóa mã mời",
     "确定要删除该邀请码吗？此操作不可撤销。": "Xóa mã mời này? Hành động này không thể hoàn tác.",
-    "请至少选择一个邀请码！": "Vui lòng chọn ít nhất một mã mời!"
+    "请至少选择一个邀请码！": "Vui lòng chọn ít nhất một mã mời!",
+    "启用详细日志": "Bật nhật ký chi tiết",
+    "记录完整的请求与响应内容": "Ghi lại nội dung yêu cầu và phản hồi đầy đủ",
+    "详细日志写入数据库": "Ghi nhật ký chi tiết vào cơ sở dữ liệu",
+    "开启后可在日志面板查看请求详情": "Bật để xem chi tiết trong bảng nhật ký"
   }
 }

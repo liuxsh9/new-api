@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	detailLogEnabled = false
-	detailLogDir     = "/app/logs/details"
-	detailLogCh      chan detailLogEntry
+	detailLogDir = "/app/logs/details"
+	detailLogCh  chan detailLogEntry
 )
 
 type detailLogEntry struct {
@@ -25,19 +24,38 @@ type detailLogEntry struct {
 const detailLogChanSize = 8192
 
 func init() {
+	// 环境变量作为启动时的初始值
 	if os.Getenv("DETAIL_LOG_ENABLED") == "true" {
-		detailLogEnabled = true
-		detailLogDir = common.GetEnvOrDefaultString("DETAIL_LOG_DIR", "/app/logs/details")
-
-		if err := os.MkdirAll(detailLogDir, 0755); err != nil {
-			common.SysLog("failed to create detail log directory: " + err.Error())
-			detailLogEnabled = false
-			return
-		}
-
-		detailLogCh = make(chan detailLogEntry, detailLogChanSize)
-		go detailLogWriter()
+		common.DetailLogEnabled = true
 	}
+	if common.DetailLogEnabled {
+		initDetailLog()
+	}
+	if os.Getenv("DB_DETAIL_STORAGE") == "true" {
+		common.DetailLogDBStorageEnabled = true
+	}
+}
+
+func initDetailLog() {
+	detailLogDir = common.GetEnvOrDefaultString("DETAIL_LOG_DIR", "/app/logs/details")
+
+	if err := os.MkdirAll(detailLogDir, 0755); err != nil {
+		common.SysLog("failed to create detail log directory: " + err.Error())
+		common.DetailLogEnabled = false
+		return
+	}
+
+	detailLogCh = make(chan detailLogEntry, detailLogChanSize)
+	go detailLogWriter()
+}
+
+// SetDetailLogEnabled enables or disables detail logging at runtime
+func SetDetailLogEnabled(enabled bool) {
+	if enabled && !common.DetailLogEnabled {
+		// Turning on: initialize writer goroutine
+		initDetailLog()
+	}
+	common.DetailLogEnabled = enabled
 }
 
 // detailLogWriter is a single goroutine that drains the channel and writes to file.
@@ -117,7 +135,7 @@ func DecompressJSON(data []byte) (string, error) {
 
 // WriteDetailLog writes detailed request/response to daily rotated log file
 func WriteDetailLog(requestId string, userId int, requestBody, responseBody, upstreamRequest, upstreamResponse string) error {
-	if !detailLogEnabled {
+	if !common.DetailLogEnabled {
 		return nil
 	}
 
@@ -147,5 +165,5 @@ func WriteDetailLog(requestId string, userId int, requestBody, responseBody, ups
 
 // IsDetailLogEnabled returns whether detail logging is enabled
 func IsDetailLogEnabled() bool {
-	return detailLogEnabled
+	return common.DetailLogEnabled
 }
