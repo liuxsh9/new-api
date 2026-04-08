@@ -34,6 +34,7 @@ const EditInvitationCodeModal = (props) => {
 
   const getInitValues = () => ({
     name: '',
+    code: '',
     count: 1,
     expired_at: null,
   });
@@ -179,65 +180,93 @@ const EditInvitationCodeModal = (props) => {
           getFormApi={(api) => (formApiRef.current = api)}
           onSubmit={submit}
         >
-          <div className='p-2'>
-            <Card className='!rounded-2xl shadow-sm border-0 mb-6'>
-              <div className='flex items-center mb-2'>
-                <Avatar
-                  size='small'
-                  color='blue'
-                  className='mr-2 shadow-md'
-                >
-                  <IconKey size={16} />
-                </Avatar>
-                <div>
-                  <Text className='text-lg font-medium'>
-                    {t('基本信息')}
-                  </Text>
-                  <div className='text-xs text-gray-600'>
-                    {t('设置邀请码的基本信息')}
+          {({ formState }) => (
+            <div className='p-2'>
+              <Card className='!rounded-2xl shadow-sm border-0 mb-6'>
+                <div className='flex items-center mb-2'>
+                  <Avatar
+                    size='small'
+                    color='blue'
+                    className='mr-2 shadow-md'
+                  >
+                    <IconKey size={16} />
+                  </Avatar>
+                  <div>
+                    <Text className='text-lg font-medium'>
+                      {t('基本信息')}
+                    </Text>
+                    <div className='text-xs text-gray-600'>
+                      {t('设置邀请码的基本信息')}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <Row gutter={12}>
-                <Col span={24}>
-                  <Form.Input
-                    field='name'
-                    label={t('名称')}
-                    placeholder={t('请输入名称')}
-                    style={{ width: '100%' }}
-                    rules={[{ required: true, message: t('请输入名称') }]}
-                    showClear
-                  />
-                </Col>
-                <Col span={24}>
-                  <Form.DatePicker
-                    field='expired_at'
-                    label={t('过期时间')}
-                    type='dateTime'
-                    placeholder={t('选择过期时间（可选，留空为永久）')}
-                    style={{ width: '100%' }}
-                    showClear
-                  />
-                </Col>
-                {!isEdit && (
+                <Row gutter={12}>
                   <Col span={24}>
-                    <Form.InputNumber
-                      field='count'
-                      label={t('生成数量')}
-                      min={1}
-                      max={100}
-                      rules={[
-                        { required: true, message: t('请输入生成数量') },
-                      ]}
+                    <Form.Input
+                      field='name'
+                      label={t('名称')}
+                      placeholder={t('请输入名称')}
+                      style={{ width: '100%' }}
+                      rules={[{ required: true, message: t('请输入名称') }]}
+                      showClear
+                    />
+                  </Col>
+                  {isEdit ? (
+                    <Col span={24}>
+                      <Form.Input
+                        field='code'
+                        label={t('邀请码')}
+                        style={{ width: '100%' }}
+                        disabled
+                      />
+                    </Col>
+                  ) : (
+                    <Col span={24}>
+                      <Form.Input
+                        field='code'
+                        label={t('邀请码（留空则自动生成）')}
+                        placeholder={t('自定义邀请码，留空则自动生成')}
+                        style={{ width: '100%' }}
+                        showClear
+                        onChange={(value) => {
+                          // 自定义码时隐藏生成数量
+                          if (value) {
+                            formApiRef.current?.setValue('count', 1);
+                          }
+                        }}
+                      />
+                    </Col>
+                  )}
+                  <Col span={24}>
+                    <Form.DatePicker
+                      field='expired_at'
+                      label={t('过期时间')}
+                      type='dateTime'
+                      placeholder={t('选择过期时间（可选，留空为永久）')}
                       style={{ width: '100%' }}
                       showClear
                     />
                   </Col>
-                )}
-              </Row>
-            </Card>
-          </div>
+                  {!isEdit && !formState?.values?.code && (
+                    <Col span={24}>
+                      <Form.InputNumber
+                        field='count'
+                        label={t('生成数量')}
+                        min={1}
+                        max={100}
+                        rules={[
+                          { required: true, message: t('请输入生成数量') },
+                        ]}
+                        style={{ width: '100%' }}
+                        showClear
+                      />
+                    </Col>
+                  )}
+                </Row>
+              </Card>
+            </div>
+          )}
         </Form>
       </Spin>
     </SideSheet>

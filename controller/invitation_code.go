@@ -58,6 +58,7 @@ func GetInvitationCode(c *gin.Context) {
 func AddInvitationCode(c *gin.Context) {
 	type addRequest struct {
 		Name      string `json:"name"`
+		Code      string `json:"code"`
 		Count     int    `json:"count"`
 		ExpiredAt int64  `json:"expired_at"`
 	}
@@ -70,11 +71,16 @@ func AddInvitationCode(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvitationCodeNameLength)
 		return
 	}
-	if req.Count <= 0 {
+	// 自定义码时只允许创建1个
+	if req.Code != "" {
 		req.Count = 1
-	}
-	if req.Count > 100 {
-		req.Count = 100
+	} else {
+		if req.Count <= 0 {
+			req.Count = 1
+		}
+		if req.Count > 100 {
+			req.Count = 100
+		}
 	}
 	if req.ExpiredAt != 0 && req.ExpiredAt < common.GetTimestamp() {
 		common.ApiErrorI18n(c, i18n.MsgInvitationCodeExpireInvalid)
@@ -84,7 +90,10 @@ func AddInvitationCode(c *gin.Context) {
 	var keys []string
 	now := common.GetTimestamp()
 	for i := 0; i < req.Count; i++ {
-		code := common.GetUUID()
+		code := req.Code
+		if code == "" {
+			code = common.GetUUID()
+		}
 		ic := model.InvitationCode{
 			Code:      code,
 			Name:      req.Name,

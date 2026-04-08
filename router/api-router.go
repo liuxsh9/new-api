@@ -134,6 +134,7 @@ func SetApiRouter(router *gin.Engine) {
 				// Invitation code routes
 				adminRoute.GET("/invitation_code", controller.GetAllInvitationCodes)
 				adminRoute.GET("/invitation_code/search", controller.SearchInvitationCodes)
+				adminRoute.GET("/invitation_code/:id", controller.GetInvitationCode)
 				adminRoute.POST("/invitation_code", controller.AddInvitationCode)
 				adminRoute.PUT("/invitation_code", controller.UpdateInvitationCode)
 				adminRoute.DELETE("/invitation_code/:id", controller.DeleteInvitationCode)
