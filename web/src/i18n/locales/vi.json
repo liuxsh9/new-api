@@ -3886,6 +3886,21 @@
     "导出用户额度": "Xuất hạn mức người dùng",
     "全部月份": "Tất cả tháng",
     "请先选择一个月份再导出": "Vui lòng chọn tháng trước khi xuất",
-    "选择月份后可导出该月数据": "Chọn tháng để xuất dữ liệu"
+    "选择月份后可导出该月数据": "Chọn tháng để xuất dữ liệu",
+    "邀请码管理": "Quản lý mã mời",
+    "注册时需要邀请码": "Yêu cầu mã mời khi đăng ký",
+    "请输入邀请码": "Vui lòng nhập mã mời",
+    "添加邀请码": "Thêm mã mời",
+    "创建邀请码": "Tạo mã mời",
+    "复制所选邀请码到剪贴板": "Sao chép mã đã chọn",
+    "邀请码创建成功": "Mã mời đã được tạo thành công",
+    "邀请码创建成功，是否下载邀请码？": "Mã mời đã tạo. Tải xuống?",
+    "邀请码更新成功！": "Mã mời đã cập nhật thành công!",
+    "创建新的邀请码": "Tạo mã mời mới",
+    "更新邀请码信息": "Cập nhật mã mời",
+    "设置邀请码的基本信息": "Thiết lập thông tin cơ bản",
+    "删除邀请码": "Xóa mã mời",
+    "确定要删除该邀请码吗？此操作不可撤销。": "Xóa mã mời này? Hành động này không thể hoàn tác.",
+    "请至少选择一个邀请码！": "Vui lòng chọn ít nhất một mã mời!"
   }
 }

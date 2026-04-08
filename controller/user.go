@@ -157,6 +157,16 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	if common.InvitationCodeEnabled {
+		if user.InvitationCode == "" {
+			common.ApiErrorI18n(c, i18n.MsgInvitationCodeRequired)
+			return
+		}
+		if err := model.ValidateInvitationCode(user.InvitationCode); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)

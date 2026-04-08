@@ -3336,6 +3336,21 @@
     "导出用户额度": "Exporter le quota utilisateur",
     "全部月份": "Tous les mois",
     "请先选择一个月份再导出": "Veuillez sélectionner un mois avant d'exporter",
-    "选择月份后可导出该月数据": "Sélectionnez un mois pour exporter ses données"
+    "选择月份后可导出该月数据": "Sélectionnez un mois pour exporter ses données",
+    "邀请码管理": "Gestion des codes d'invitation",
+    "注册时需要邀请码": "Code d'invitation requis pour l'inscription",
+    "请输入邀请码": "Veuillez entrer le code d'invitation",
+    "添加邀请码": "Ajouter un code d'invitation",
+    "创建邀请码": "Créer un code d'invitation",
+    "复制所选邀请码到剪贴板": "Copier les codes sélectionnés",
+    "邀请码创建成功": "Code(s) d'invitation créé(s) avec succès",
+    "邀请码创建成功，是否下载邀请码？": "Codes d'invitation créés. Les télécharger ?",
+    "邀请码更新成功！": "Code d'invitation mis à jour !",
+    "创建新的邀请码": "Créer un nouveau code d'invitation",
+    "更新邀请码信息": "Mettre à jour le code d'invitation",
+    "设置邀请码的基本信息": "Définir les informations de base",
+    "删除邀请码": "Supprimer le code d'invitation",
+    "确定要删除该邀请码吗？此操作不可撤销。": "Supprimer ce code d'invitation ? Cette action est irréversible.",
+    "请至少选择一个邀请码！": "Veuillez sélectionner au moins un code d'invitation !"
   }
 }

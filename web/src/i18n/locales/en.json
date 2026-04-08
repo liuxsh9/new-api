@@ -3380,6 +3380,21 @@
     "导出用户额度": "Export User Quota",
     "全部月份": "All Months",
     "请先选择一个月份再导出": "Please select a month before exporting",
-    "选择月份后可导出该月数据": "Select a month to export its data"
+    "选择月份后可导出该月数据": "Select a month to export its data",
+    "邀请码管理": "Invitation Code Management",
+    "注册时需要邀请码": "Require invitation code for registration",
+    "请输入邀请码": "Please enter invitation code",
+    "添加邀请码": "Add Invitation Code",
+    "创建邀请码": "Create Invitation Code",
+    "复制所选邀请码到剪贴板": "Copy selected codes to clipboard",
+    "邀请码创建成功": "Invitation code(s) created successfully",
+    "邀请码创建成功，是否下载邀请码？": "Invitation codes created. Download them?",
+    "邀请码更新成功！": "Invitation code updated successfully!",
+    "创建新的邀请码": "Create New Invitation Code",
+    "更新邀请码信息": "Update Invitation Code",
+    "设置邀请码的基本信息": "Set basic information for invitation code",
+    "删除邀请码": "Delete Invitation Code",
+    "确定要删除该邀请码吗？此操作不可撤销。": "Are you sure you want to delete this invitation code? This action cannot be undone.",
+    "请至少选择一个邀请码！": "Please select at least one invitation code!"
   }
 }

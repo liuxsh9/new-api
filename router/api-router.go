@@ -130,6 +130,13 @@ func SetApiRouter(router *gin.Engine) {
 				// Admin 2FA routes
 				adminRoute.GET("/2fa/stats", controller.Admin2FAStats)
 				adminRoute.DELETE("/:id/2fa", controller.AdminDisable2FA)
+
+				// Invitation code routes
+				adminRoute.GET("/invitation_code", controller.GetAllInvitationCodes)
+				adminRoute.GET("/invitation_code/search", controller.SearchInvitationCodes)
+				adminRoute.POST("/invitation_code", controller.AddInvitationCode)
+				adminRoute.PUT("/invitation_code", controller.UpdateInvitationCode)
+				adminRoute.DELETE("/invitation_code/:id", controller.DeleteInvitationCode)
 			}
 		}
 

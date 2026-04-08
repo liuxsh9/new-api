@@ -264,3 +264,12 @@ custom_oauth.name_empty: "供應者名稱不能為空"
 custom_oauth.has_bindings: "無法刪除已有使用者綁定的供應者"
 custom_oauth.binding_not_found: "OAuth 綁定不存在"
 custom_oauth.provider_id_field_invalid: "無法從供應者響應中提取使用者 ID"
+
+# 邀請碼訊息
+invitation_code.required: "註冊需要邀請碼"
+invitation_code.invalid: "無效的邀請碼"
+invitation_code.expired: "該邀請碼已過期"
+invitation_code.disabled: "該邀請碼已被停用"
+invitation_code.name_length: "邀請碼名稱長度必須在1-20之間"
+invitation_code.create_failed: "建立邀請碼失敗"
+invitation_code.expire_invalid: "過期時間不能早於目前時間"

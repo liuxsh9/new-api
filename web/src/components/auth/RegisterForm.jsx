@@ -80,6 +80,7 @@ const RegisterForm = () => {
     email: '',
     verification_code: '',
     wechat_verification_code: '',
+    invitation_code: '',
   });
   const { username, password, password2 } = inputs;
   const [userState, userDispatch] = useContext(UserContext);
@@ -142,6 +143,7 @@ const RegisterForm = () => {
   );
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showInvitationCode, setShowInvitationCode] = useState(false);
 
   useEffect(() => {
     setShowEmailVerification(!!status?.email_verification);
@@ -153,6 +155,7 @@ const RegisterForm = () => {
     // 从 status 获取用户协议和隐私政策的启用状态
     setHasUserAgreement(status?.user_agreement_enabled || false);
     setHasPrivacyPolicy(status?.privacy_policy_enabled || false);
+    setShowInvitationCode(!!status?.invitation_code_enabled);
   }, [status]);
 
   useEffect(() => {
@@ -222,6 +225,10 @@ const RegisterForm = () => {
     }
     if (password !== password2) {
       showInfo('两次输入的密码不一致');
+      return;
+    }
+    if (showInvitationCode && !inputs.invitation_code) {
+      showInfo(t('请输入邀请码'));
       return;
     }
     if (username && password) {
@@ -635,6 +642,17 @@ const RegisterForm = () => {
                       prefix={<IconKey />}
                     />
                   </>
+                )}
+
+                {showInvitationCode && (
+                  <Form.Input
+                    field='invitation_code'
+                    label={t('邀请码')}
+                    placeholder={t('请输入邀请码')}
+                    name='invitation_code'
+                    onChange={(value) => handleChange('invitation_code', value)}
+                    prefix={<IconKey />}
+                  />
                 )}
 
                 {(hasUserAgreement || hasPrivacyPolicy) && (
