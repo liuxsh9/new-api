@@ -374,6 +374,10 @@ func migrateLOGDB() error {
 	if err = LOG_DB.AutoMigrate(&Log{}, &LogDetail{}); err != nil {
 		return err
 	}
+	// Drop the old less-efficient index (created_at, type) — replaced by (type, created_at)
+	if LOG_DB.Migrator().HasIndex(&Log{}, "idx_created_at_type") {
+		_ = LOG_DB.Migrator().DropIndex(&Log{}, "idx_created_at_type")
+	}
 	return nil
 }
 

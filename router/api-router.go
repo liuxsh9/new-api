@@ -12,6 +12,16 @@ import (
 )
 
 func SetApiRouter(router *gin.Engine) {
+	// Archive download routes — outside gzip middleware to avoid double-compressing .xz files
+	archiveRoute := router.Group("/api/log/archives")
+	archiveRoute.Use(middleware.RouteTag("api"))
+	archiveRoute.Use(middleware.GlobalAPIRateLimit())
+	{
+		archiveRoute.GET("/download", middleware.AdminAuth(), controller.DownloadArchive)
+		// Token-authenticated download for CLI scripts (no session needed)
+		archiveRoute.GET("/download_t", controller.DownloadArchiveWithToken)
+	}
+
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.RouteTag("api"))
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -299,6 +309,8 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
 		logRoute.GET("/channel_affinity_usage_cache", middleware.AdminAuth(), controller.GetChannelAffinityUsageCacheStats)
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
+		logRoute.GET("/archives", middleware.AdminAuth(), controller.ListArchives)
+		logRoute.POST("/archives/token", middleware.AdminAuth(), controller.CreateArchiveDownloadToken)
 		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
 		logRoute.GET("/self/search", middleware.UserAuth(), middleware.SearchRateLimit(), controller.SearchUserLogs)
 		logRoute.GET("/detail/:request_id", middleware.UserAuth(), controller.GetLogDetail)

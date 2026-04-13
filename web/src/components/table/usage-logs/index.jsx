@@ -30,6 +30,7 @@ import ChannelAffinityUsageCacheModal from './modals/ChannelAffinityUsageCacheMo
 import ParamOverrideModal from './modals/ParamOverrideModal';
 import LogDetailModal from './modals/LogDetailModal';
 import MonthlyStatsTable from './MonthlyStatsTable';
+import LogArchiveTable from './LogArchiveTable';
 import { useLogsData } from '../../../hooks/usage-logs/useUsageLogsData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { isAdmin } from '../../../helpers';
@@ -101,6 +102,11 @@ const LogsPage = () => {
       <TabPane tab={t('月度统计')} itemKey="monthly">
         <div style={{ padding: '16px 0' }}>
           <MonthlyStatsTable />
+        </div>
+      </TabPane>
+      <TabPane tab={t('日志归档')} itemKey="archive">
+        <div style={{ padding: '16px 0' }}>
+          <LogArchiveTable />
         </div>
       </TabPane>
     </Tabs>

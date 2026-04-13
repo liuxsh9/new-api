@@ -171,7 +171,7 @@ func GetMonthlyStats(c *gin.Context) {
 		return
 	}
 
-	stats, err := model.GetMonthlyStats(startTimestamp, endTimestamp)
+	stats, err := model.GetMonthlyStatsWithCache(startTimestamp, endTimestamp)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -203,7 +203,7 @@ func GetMonthlyStatsByChannel(c *gin.Context) {
 		return
 	}
 
-	stats, err := model.GetMonthlyStatsByChannel(startTimestamp, endTimestamp)
+	stats, err := model.GetMonthlyStatsByChannelWithCache(startTimestamp, endTimestamp)
 	if err != nil {
 		common.ApiError(c, err)
 		return
