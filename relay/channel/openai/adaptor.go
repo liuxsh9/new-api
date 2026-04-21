@@ -18,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/ai360"
+	"github.com/QuantumNous/new-api/relay/channel/claude"
 	"github.com/QuantumNous/new-api/relay/channel/lingyiwanwu"
 
 	//"github.com/QuantumNous/new-api/relay/channel/minimax"
@@ -172,6 +173,10 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		url = strings.Replace(url, "{model}", info.UpstreamModelName, -1)
 		return url, nil
 	default:
+		if info.IsPassThroughEnabled() &&
+			info.RelayFormat != types.RelayFormatOpenAI {
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
+		}
 		if (info.RelayFormat == types.RelayFormatClaude || info.RelayFormat == types.RelayFormatGemini) &&
 			info.RelayMode != relayconstant.RelayModeResponses &&
 			info.RelayMode != relayconstant.RelayModeResponsesCompact {
@@ -230,6 +235,17 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, header *http.Header, info *
 		}
 		if header.Get("X-OpenRouter-Title") == "" {
 			header.Set("X-OpenRouter-Title", "New API")
+		}
+	}
+	if info.IsPassThroughEnabled() && info.RelayFormat == types.RelayFormatClaude {
+		header.Set("x-api-key", info.ApiKey)
+		anthropicVersion := info.RequestHeaders["Anthropic-Version"]
+		if anthropicVersion == "" {
+			anthropicVersion = "2023-06-01"
+		}
+		header.Set("anthropic-version", anthropicVersion)
+		if beta, ok := info.RequestHeaders["Anthropic-Beta"]; ok && beta != "" {
+			header.Set("anthropic-beta", beta)
 		}
 	}
 	return nil
@@ -612,6 +628,13 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 }
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
+	if info.IsPassThroughEnabled() && info.RelayFormat == types.RelayFormatClaude {
+		info.FinalRequestRelayFormat = types.RelayFormatClaude
+		if info.IsStream {
+			return claude.ClaudeStreamHandler(c, resp, info)
+		}
+		return claude.ClaudeHandler(c, resp, info)
+	}
 	switch info.RelayMode {
 	case relayconstant.RelayModeRealtime:
 		err, usage = OpenaiRealtimeHandler(c, info)

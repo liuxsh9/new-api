@@ -650,6 +650,10 @@ func (info *RelayInfo) HasSendResponse() bool {
 	return info.FirstResponseTime.After(info.StartTime)
 }
 
+func (info *RelayInfo) IsPassThroughEnabled() bool {
+	return model_setting.GetGlobalSettings().PassThroughRequestEnabled || info.ChannelSetting.PassThroughBodyEnabled
+}
+
 type TaskRelayInfo struct {
 	Action       string
 	OriginTaskID string
