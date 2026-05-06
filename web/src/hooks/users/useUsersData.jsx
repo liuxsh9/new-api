@@ -35,6 +35,7 @@ export const useUsersData = () => {
   const [searching, setSearching] = useState(false);
   const [groupOptions, setGroupOptions] = useState([]);
   const [userCount, setUserCount] = useState(0);
+  const [sortBy, setSortBy] = useState('');
 
   // Modal states
   const [showAddUser, setShowAddUser] = useState(false);
@@ -70,9 +71,13 @@ export const useUsersData = () => {
   };
 
   // Load users data
-  const loadUsers = async (startIdx, pageSize) => {
+  const loadUsers = async (startIdx, pageSize, sortByOverride) => {
     setLoading(true);
-    const res = await API.get(`/api/user/?p=${startIdx}&page_size=${pageSize}`);
+    const sort = sortByOverride !== undefined ? sortByOverride : sortBy;
+    const sortParam = sort ? `&sort_by=${encodeURIComponent(sort)}` : '';
+    const res = await API.get(
+      `/api/user/?p=${startIdx}&page_size=${pageSize}${sortParam}`,
+    );
     const { success, message, data } = res.data;
     if (success) {
       const newPageData = data.items;
@@ -91,6 +96,7 @@ export const useUsersData = () => {
     pageSize,
     searchKeyword = null,
     searchGroup = null,
+    sortByOverride,
   ) => {
     // If no parameters passed, get values from form
     if (searchKeyword === null || searchGroup === null) {
@@ -101,12 +107,14 @@ export const useUsersData = () => {
 
     if (searchKeyword === '' && searchGroup === '') {
       // If keyword is blank, load files instead
-      await loadUsers(startIdx, pageSize);
+      await loadUsers(startIdx, pageSize, sortByOverride);
       return;
     }
     setSearching(true);
+    const sort = sortByOverride !== undefined ? sortByOverride : sortBy;
+    const sortParam = sort ? `&sort_by=${encodeURIComponent(sort)}` : '';
     const res = await API.get(
-      `/api/user/search?keyword=${searchKeyword}&group=${searchGroup}&p=${startIdx}&page_size=${pageSize}`,
+      `/api/user/search?keyword=${searchKeyword}&group=${searchGroup}&p=${startIdx}&page_size=${pageSize}${sortParam}`,
     );
     const { success, message, data } = res.data;
     if (success) {
@@ -185,6 +193,54 @@ export const useUsersData = () => {
       }
     } catch (error) {
       showError(t('操作失败，请重试'));
+    }
+  };
+
+  // Adjust a user's quota by delta. Pass `absolute` for clear-to-zero etc.
+  const adjustUserQuota = async (user, delta, { absolute = false } = {}) => {
+    if (!user) return;
+    const currentQuota = parseInt(user.quota) || 0;
+    const newQuota = absolute ? delta : currentQuota + delta;
+    const payload = {
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name || '',
+      group: user.group,
+      quota: newQuota,
+      remark: user.remark || '',
+    };
+    try {
+      const res = await API.put('/api/user/', payload);
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess(t('额度已更新'));
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, quota: newQuota } : u)),
+        );
+      } else {
+        showError(message || t('操作失败，请重试'));
+      }
+    } catch (error) {
+      showError(t('操作失败，请重试'));
+    }
+  };
+
+  // Handle table sort change. Semi UI passes a single object
+  // { pagination, filters, sorter, extra }. Maps Semi's sortOrder to backend sort_by.
+  const handleTableChange = (changeInfo = {}) => {
+    if (changeInfo?.extra?.changeType !== 'sorter') return;
+    const sorter = changeInfo.sorter || {};
+    let next = '';
+    if (sorter.sortOrder === 'descend') next = 'quota_desc';
+    else if (sorter.sortOrder === 'ascend') next = 'quota_asc';
+    if (next === sortBy) return;
+    setSortBy(next);
+    setActivePage(1);
+    const { searchKeyword, searchGroup } = getFormValues();
+    if (searchKeyword === '' && searchGroup === '') {
+      loadUsers(1, pageSize, next);
+    } else {
+      searchUsers(1, pageSize, searchKeyword, searchGroup, next);
     }
   };
 
@@ -307,9 +363,12 @@ export const useUsersData = () => {
     manageUser,
     resetUserPasskey,
     resetUserTwoFA,
+    adjustUserQuota,
     handlePageChange,
     handlePageSizeChange,
     handleRow,
+    handleTableChange,
+    sortBy,
     refresh,
     closeAddUser,
     closeEditUser,

@@ -25,11 +25,13 @@ import {
   Tooltip,
   Progress,
   Popover,
+  Popconfirm,
   Typography,
   Dropdown,
 } from '@douyinfe/semi-ui';
 import { IconMore } from '@douyinfe/semi-icons';
 import { renderGroup, renderNumber, renderQuota } from '../../../helpers';
+import { displayAmountToQuota } from '../../../helpers/quota';
 
 /**
  * Render user role
@@ -64,19 +66,31 @@ const renderRole = (role, t) => {
 };
 
 /**
- * Render username with remark
+ * Render username with display name and remark
  */
 const renderUsername = (text, record) => {
   const remark = record.remark;
+  const displayName = record.display_name;
+  const hasDisplayName = displayName && displayName !== text;
+
+  const primary = hasDisplayName ? (
+    <div className='flex flex-col leading-tight'>
+      <span className='font-medium'>{displayName}</span>
+      <span className='text-xs text-gray-500'>@{text}</span>
+    </div>
+  ) : (
+    <span>{text}</span>
+  );
+
   if (!remark) {
-    return <span>{text}</span>;
+    return primary;
   }
   const maxLen = 10;
   const displayRemark =
     remark.length > maxLen ? remark.slice(0, maxLen) + '…' : remark;
   return (
     <Space spacing={2}>
-      <span>{text}</span>
+      {primary}
       <Tooltip content={remark} position='top' showArrow>
         <Tag color='white' shape='circle' className='!text-xs'>
           <div className='flex items-center gap-1'>
@@ -134,7 +148,7 @@ const renderStatistics = (text, record, showEnableDisableModal, t) => {
 };
 
 // Render separate quota usage column
-const renderQuotaUsage = (text, record, t) => {
+const renderQuotaUsage = (text, record, t, adjustUserQuota) => {
   const { Paragraph } = Typography;
   const used = parseInt(record.used_quota) || 0;
   const remain = parseInt(record.quota) || 0;
@@ -153,20 +167,66 @@ const renderQuotaUsage = (text, record, t) => {
       </Paragraph>
     </div>
   );
+
+  // Quick-adjust amounts are expressed in the admin's display currency,
+  // converted to raw quota units before sending to the backend.
+  const quickAmounts = [1000, 2000, 5000];
+  const disabled = record.DeletedAt !== null || !adjustUserQuota;
+
   return (
-    <Popover content={popoverContent} position='top'>
-      <Tag color='white' shape='circle'>
-        <div className='flex flex-col items-end'>
-          <span className='text-xs leading-none'>{`${renderQuota(remain)} / ${renderQuota(total)}`}</span>
-          <Progress
-            percent={percent}
-            aria-label='quota usage'
-            format={() => `${percent.toFixed(0)}%`}
-            style={{ width: '100%', marginTop: '1px', marginBottom: 0 }}
-          />
-        </div>
-      </Tag>
-    </Popover>
+    <Space spacing={4} align='center'>
+      <Popover content={popoverContent} position='top'>
+        <Tag color='white' shape='circle'>
+          <div className='flex flex-col items-end'>
+            <span className='text-xs leading-none'>{`${renderQuota(remain)} / ${renderQuota(total)}`}</span>
+            <Progress
+              percent={percent}
+              aria-label='quota usage'
+              format={() => `${percent.toFixed(0)}%`}
+              style={{ width: '100%', marginTop: '1px', marginBottom: 0 }}
+            />
+          </div>
+        </Tag>
+      </Popover>
+      {!disabled && (
+        <Space spacing={2}>
+          {quickAmounts.map((amount) => (
+            <Tooltip
+              key={amount}
+              content={`${t('增加')} ${renderQuota(displayAmountToQuota(amount))}`}
+              position='top'
+            >
+              <Button
+                size='small'
+                theme='borderless'
+                type='tertiary'
+                className='!px-1'
+                onClick={() =>
+                  adjustUserQuota(record, displayAmountToQuota(amount))
+                }
+              >
+                +{amount}
+              </Button>
+            </Tooltip>
+          ))}
+          <Popconfirm
+            title={t('确定要将该用户的剩余额度清零吗？')}
+            content={t('此操作不可撤销')}
+            position='top'
+            onConfirm={() => adjustUserQuota(record, 0, { absolute: true })}
+          >
+            <Button
+              size='small'
+              theme='borderless'
+              type='danger'
+              className='!px-1'
+            >
+              {t('清零')}
+            </Button>
+          </Popconfirm>
+        </Space>
+      )}
+    </Space>
   );
 };
 
@@ -309,14 +369,22 @@ export const getUsersColumns = ({
   showResetPasskeyModal,
   showResetTwoFAModal,
   showUserSubscriptionsModal,
+  adjustUserQuota,
+  sortBy,
 }) => {
+  const quotaSortOrder =
+    sortBy === 'quota_desc'
+      ? 'descend'
+      : sortBy === 'quota_asc'
+        ? 'ascend'
+        : false;
   return [
     {
       title: 'ID',
       dataIndex: 'id',
     },
     {
-      title: t('用户名'),
+      title: t('用户'),
       dataIndex: 'username',
       render: (text, record) => renderUsername(text, record),
     },
@@ -328,8 +396,13 @@ export const getUsersColumns = ({
     },
     {
       title: t('剩余额度/总额度'),
+      dataIndex: 'quota',
       key: 'quota_usage',
-      render: (text, record) => renderQuotaUsage(text, record, t),
+      // Semi UI requires sorter to be a function to enable click-to-sort. Server
+      // already returns rows in the right order, so we no-op the client compare.
+      sorter: () => 0,
+      sortOrder: quotaSortOrder,
+      render: (text, record) => renderQuotaUsage(text, record, t, adjustUserQuota),
     },
     {
       title: t('分组'),

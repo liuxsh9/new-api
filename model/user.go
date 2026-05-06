@@ -189,7 +189,23 @@ func GetMaxUserId() int {
 	return user.Id
 }
 
-func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err error) {
+// userListOrderClause builds the ORDER BY clause for the user list.
+// Active users (not deleted, status enabled) always come before disabled/deleted users.
+// `sortBy` controls the secondary sort: "quota_desc"/"quota_asc" sort by total quota
+// (used_quota + quota); empty falls back to id desc.
+func userListOrderClause(sortBy string) string {
+	primary := "CASE WHEN deleted_at IS NULL AND status = 1 THEN 0 ELSE 1 END ASC"
+	switch sortBy {
+	case "quota_desc":
+		return primary + ", (used_quota + quota) DESC, id DESC"
+	case "quota_asc":
+		return primary + ", (used_quota + quota) ASC, id DESC"
+	default:
+		return primary + ", id DESC"
+	}
+}
+
+func GetAllUsers(pageInfo *common.PageInfo, sortBy string) (users []*User, total int64, err error) {
 	// Start transaction
 	tx := DB.Begin()
 	if tx.Error != nil {
@@ -209,7 +225,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	}
 
 	// Get paginated users within same transaction
-	err = tx.Unscoped().Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password").Find(&users).Error
+	err = tx.Unscoped().Order(userListOrderClause(sortBy)).Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password").Find(&users).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -223,7 +239,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	return users, total, nil
 }
 
-func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, int64, error) {
+func SearchUsers(keyword string, group string, sortBy string, startIdx int, num int) ([]*User, int64, error) {
 	var users []*User
 	var total int64
 	var err error
@@ -276,7 +292,7 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	}
 
 	// 获取分页数据
-	err = query.Omit("password").Order("id desc").Limit(num).Offset(startIdx).Find(&users).Error
+	err = query.Omit("password").Order(userListOrderClause(sortBy)).Limit(num).Offset(startIdx).Find(&users).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err

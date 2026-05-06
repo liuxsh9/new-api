@@ -44,12 +44,15 @@ const UsersTable = (usersData) => {
     handlePageChange,
     handlePageSizeChange,
     handleRow,
+    handleTableChange,
+    sortBy,
     setEditingUser,
     setShowEditUser,
     manageUser,
     refresh,
     resetUserPasskey,
     resetUserTwoFA,
+    adjustUserQuota,
     t,
   } = usersData;
 
@@ -141,6 +144,8 @@ const UsersTable = (usersData) => {
       showResetPasskeyModal: showResetPasskeyUserModal,
       showResetTwoFAModal: showResetTwoFAUserModal,
       showUserSubscriptionsModal: showUserSubscriptionsUserModal,
+      adjustUserQuota,
+      sortBy,
     });
   }, [
     t,
@@ -153,6 +158,8 @@ const UsersTable = (usersData) => {
     showResetPasskeyUserModal,
     showResetTwoFAUserModal,
     showUserSubscriptionsUserModal,
+    adjustUserQuota,
+    sortBy,
   ]);
 
   // Handle compact mode by removing fixed positioning
@@ -174,6 +181,7 @@ const UsersTable = (usersData) => {
         columns={tableColumns}
         dataSource={users}
         scroll={compactMode ? undefined : { x: 'max-content' }}
+        onChange={handleTableChange}
         pagination={{
           currentPage: activePage,
           pageSize: pageSize,
